@@ -1,3 +1,5 @@
+### Updated for PocketBase v0.23.0
+
 # Pocketbase Typegen
 
 Generate typescript definitions from your [pocketbase.io](https://pocketbase.io/) schema.

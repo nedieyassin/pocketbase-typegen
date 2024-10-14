@@ -4,7 +4,7 @@
     "name": "my_view",
     "type": "view",
     "system": false,
-    "schema": [
+    "fields": [
       {
         "id": "iwh5jvyg",
         "name": "post_relation_field",
@@ -55,7 +55,7 @@
     "name": "users",
     "type": "auth",
     "system": false,
-    "schema": [
+    "fields": [
       {
         "id": "users_name",
         "name": "name",
@@ -113,7 +113,7 @@
     "name": "everything",
     "type": "base",
     "system": false,
-    "schema": [
+    "fields": [
       {
         "id": "ze7zu2ji",
         "name": "text_field",
@@ -319,7 +319,7 @@
     "name": "posts",
     "type": "base",
     "system": false,
-    "schema": [
+    "fields": [
       {
         "id": "wzasqdgc",
         "name": "field",
@@ -379,7 +379,7 @@
     "name": "custom_auth",
     "type": "auth",
     "system": false,
-    "schema": [
+    "fields": [
       {
         "id": "zj6cku68",
         "name": "custom_field",
@@ -417,7 +417,7 @@
     "name": "base",
     "type": "base",
     "system": false,
-    "schema": [
+    "fields": [
       {
         "id": "epgo3hyb",
         "name": "field",
