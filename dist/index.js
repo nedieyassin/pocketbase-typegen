@@ -75,20 +75,18 @@ export type ${DATE_STRING_TYPE_NAME} = string
 export type ${RECORD_ID_STRING_NAME} = string
 export type ${HTML_STRING_NAME} = string`;
 var BASE_SYSTEM_FIELDS_DEFINITION = `// System fields
-export type BaseSystemFields<T = never> = {
+export type BaseSystemFields = {
 	id: ${RECORD_ID_STRING_NAME}
 	created: ${DATE_STRING_TYPE_NAME}
 	updated: ${DATE_STRING_TYPE_NAME}
 	collectionId: string
 	collectionName: Collections
-	expand?: T
 }`;
-var AUTH_SYSTEM_FIELDS_DEFINITION = `export type AuthSystemFields<T = never> = {
+var AUTH_SYSTEM_FIELDS_DEFINITION = `export type AuthSystemFields = {
 	email: string
 	emailVisibility: boolean
-	username: string
 	verified: boolean
-} & BaseSystemFields<T>`;
+} & BaseSystemFields`;
 
 // src/utils.ts
 import { promises as fs2 } from "fs";
@@ -190,14 +188,26 @@ var pbSchemaTypescriptMap = {
   number: "number",
   file: (fieldSchema) => fieldSchema.maxSelect && fieldSchema.maxSelect > 1 ? "string[]" : "string",
   json: (fieldSchema) => `null | ${fieldNameToGeneric(fieldSchema.name)}`,
-  relation: (fieldSchema) => fieldSchema.maxSelect && fieldSchema.maxSelect === 1 ? RECORD_ID_STRING_NAME : `${RECORD_ID_STRING_NAME}[]`,
+  relation: (fieldSchema, _, collections) => {
+    const fRecord = collections.find((c) => c.id === fieldSchema.collectionId);
+    const hasOne = !!(fieldSchema.maxSelect && fieldSchema.maxSelect === 1);
+    if (!fRecord) {
+      return hasOne ? RECORD_ID_STRING_NAME : `${RECORD_ID_STRING_NAME}[]`;
+    }
+    const pascaleName = toPascalCase((fRecord == null ? void 0 : fRecord.name) || "");
+    const genericArgsWithDefaults = getGenericArgStringWithDefault(fRecord.fields, {
+      includeExpand: false
+    });
+    const fRecordName = `${pascaleName}Response${genericArgsWithDefaults ? `<any>` : ""}`;
+    return hasOne ? fRecordName : `${fRecordName}[]`;
+  },
   select: (fieldSchema, collectionName) => {
     const valueType = fieldSchema.values ? getOptionEnumName(collectionName, fieldSchema.name) : "string";
     return fieldSchema.maxSelect && fieldSchema.maxSelect > 1 ? `${valueType}[]` : valueType;
   },
   user: (fieldSchema) => fieldSchema.maxSelect && fieldSchema.maxSelect > 1 ? `${RECORD_ID_STRING_NAME}[]` : RECORD_ID_STRING_NAME
 };
-function createTypeField(collectionName, fieldSchema) {
+function createTypeField(collectionName, fieldSchema, collections) {
   let typeStringOrFunc;
   if (!(fieldSchema.type in pbSchemaTypescriptMap)) {
     console.log(`WARNING: unknown type "${fieldSchema.type}" found in schema`);
@@ -205,7 +215,7 @@ function createTypeField(collectionName, fieldSchema) {
   } else {
     typeStringOrFunc = pbSchemaTypescriptMap[fieldSchema.type];
   }
-  const typeString = typeof typeStringOrFunc === "function" ? typeStringOrFunc(fieldSchema, collectionName) : typeStringOrFunc;
+  const typeString = typeof typeStringOrFunc === "function" ? typeStringOrFunc(fieldSchema, collectionName, collections) : typeStringOrFunc;
   const fieldName = sanitizeFieldName(fieldSchema.name);
   const required = fieldSchema.required ? "" : "?";
   return `	${fieldName}${required}: ${typeString}`;
@@ -237,7 +247,7 @@ function generate(results, options2) {
     if (row.name)
       collectionNames.push(row.name);
     if (row.fields) {
-      recordTypes.push(createRecordType(row.name, row.fields));
+      recordTypes.push(createRecordType(row.name, row.fields, results));
       responseTypes.push(createResponseType(row));
     }
   });
@@ -260,13 +270,13 @@ function generate(results, options2) {
   ];
   return fileParts.filter(Boolean).join("\n\n") + "\n";
 }
-function createRecordType(name, schema) {
+function createRecordType(name, schema, collections) {
   const selectOptionEnums = createSelectOptions(name, schema);
   const typeName = toPascalCase(name);
   const genericArgs = getGenericArgStringWithDefault(schema, {
     includeExpand: false
   });
-  const fields = schema.map((fieldSchema) => createTypeField(name, fieldSchema)).sort().join("\n");
+  const fields = schema.map((fieldSchema) => createTypeField(name, fieldSchema, collections)).sort().join("\n");
   return `${selectOptionEnums}export type ${typeName}Record${genericArgs} = ${fields ? `{
 ${fields}
 }` : "never"}`;
@@ -275,12 +285,11 @@ function createResponseType(collectionSchemaEntry) {
   const { name, fields, type } = collectionSchemaEntry;
   const pascaleName = toPascalCase(name);
   const genericArgsWithDefaults = getGenericArgStringWithDefault(fields, {
-    includeExpand: true
+    includeExpand: false
   });
   const genericArgsForRecord = getGenericArgStringForRecord(fields);
   const systemFields = getSystemFields(type);
-  const expandArgString = `<T${EXPAND_GENERIC_NAME}>`;
-  return `export type ${pascaleName}Response${genericArgsWithDefaults} = Required<${pascaleName}Record${genericArgsForRecord}> & ${systemFields}${expandArgString}`;
+  return `export type ${pascaleName}Response${genericArgsWithDefaults} = Required<${pascaleName}Record${genericArgsForRecord}> & ${systemFields}`;
 }
 
 // src/cli.ts

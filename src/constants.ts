@@ -29,6 +29,5 @@ export type BaseSystemFields<T = never> = {
 export const AUTH_SYSTEM_FIELDS_DEFINITION = `export type AuthSystemFields<T = never> = {
 \temail: string
 \temailVisibility: boolean
-\tusername: string
 \tverified: boolean
 } & BaseSystemFields<T>`
